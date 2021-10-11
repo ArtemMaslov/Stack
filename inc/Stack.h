@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-const char *StackTypeName = "unknown_type";
+#define StackTypeName ("unknown_type")
 
 struct Stack
 {
@@ -52,10 +52,11 @@ enum StackErrors
 #define STACK_CAPACITY_SCALE 2
 #define STACK_CAPACITY_DECREASE_DELTA 5
 
-#define STACK_CANARY1 0xBADBADBAADF0000D
-#define STACK_CANARY2 0xBADF0000DBAADBAD
+#define STACK_CANARY1 0xBAD0AAAAAAAA0BAD
+#define STACK_CANARY2 0xBADFBBBBBBBBFBAD
 
-int Stack_Constructor(Stack *stack, int elementSize, int Capacity);
+
+int Stack_Constructor(Stack *stack, size_t elementSize, int Capacity);
 
 int Stack_Destructor(Stack *stack);
 
@@ -65,13 +66,8 @@ void* StackPop(Stack *stack, int *error);
 
 int ValidateStack(Stack *stack);
 
-void StackDump(Stack *stack, FILE *file,
-    const char *stack_variable_name,
-    const char *stack_function_name,
-    const char *stack_file,
-    const int   stack_line,
-    const char *programm_function_name,
-    const char *programm_file,
-    const int   programm_line);
+
+#define StackDump(stack, file, programm_function_name, programm_file, programm_line) StackDump_(stack, file, #stack, __FUNCTION__, __FILE__, __LINE__, programm_function_name, programm_file, programm_line);
+
 
 #endif

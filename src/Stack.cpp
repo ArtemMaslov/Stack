@@ -12,9 +12,16 @@ bool CheckStackCRC(Stack *stack);
 
 int64_t CalculateCRC(char *buf, size_t len);
 
+void StackDump_(Stack *stack, FILE *file,
+    const char *stack_variable_name,
+    const char *stack_function_name,
+    const char *stack_file,
+    const int   stack_line,
+    const char *programm_function_name,
+    const char *programm_file,
+    const int   programm_line);
 
-
-int Stack_Constructor(Stack *stack, int elementSize, int Capacity = 100)
+int Stack_Constructor(Stack *stack, size_t elementSize, int Capacity = 16)
 {
     if (stack == nullptr)
         return STACKERR_STACK_IS_NULL;
@@ -70,13 +77,10 @@ int Stack_Destructor(Stack *stack)
 
 int StackPush(Stack *stack, void *value)
 {
+    StackDump(stack, stdout, "", "", -1);
     int error = ValidateStack(stack);
 
-    if (stack->stackSize < stack->stackCapacity)
-    {
-        memcpy((char*)stack->data + stack->elementSize * stack->stackSize++, value, stack->elementSize);
-    }
-    else
+    if (stack->stackSize >= stack->stackCapacity)
     {
         size_t oldCapacity = stack->stackCapacity;
 
@@ -103,12 +107,17 @@ int StackPush(Stack *stack, void *value)
         for (int st = oldCapacity; st < stack->stackCapacity; st++)
             st[(char*)ptr] = '\0';
     }
+    
+    memcpy((char*)stack->data + stack->elementSize * stack->stackSize++, value, stack->elementSize);
+
+    error |= ValidateStack(stack);
 
     return error;
 }
 
 void* StackPop(Stack *stack, int *error = nullptr)
 {
+    StackDump(stack, stdout, "", "", -1);
     if (error)
         *error = ValidateStack(stack);
 
@@ -134,6 +143,9 @@ void* StackPop(Stack *stack, int *error = nullptr)
             return nullptr;
         }
     }
+    
+    if (error)
+        *error |= ValidateStack(stack);
 
     return (char*)stack->data + (stack->elementSize * (stack->elementSize + 1));
 }
@@ -218,7 +230,7 @@ int64_t CalculateCRC(char *buf, size_t len)
     return (int64_t)(crc ^ 0xFFFFFFFFUL);
 };
 
-void StackDump(Stack *stack, FILE *file,
+void StackDump_(Stack *stack, FILE *file,
     const char *stack_variable_name,
     const char *stack_function_name,
     const char *stack_file,
@@ -234,9 +246,9 @@ void StackDump(Stack *stack, FILE *file,
     unsigned int stackError = ValidateStack(stack);
 
     if (stack != nullptr && stackError == STACKERR_NO_ERRORS)
-        strcpy(stackState, "OK");
+        strcpy_s(stackState, "OK");
 
-    sprintf(buffer, "Stack<%s> [%p]: %s \"%s\" called ", 
+    sprintf_s(buffer, "Stack<%s> [0x%p]: %s \"%s\" called ", 
         StackTypeName,
         stack,
         stackState,
@@ -244,10 +256,9 @@ void StackDump(Stack *stack, FILE *file,
 
     fputs(buffer, file);
 
-    fprintf(file, "from % s() at | % s, % d | \n", stack_function_name, stack_file, stack_line);
+    fprintf(file, "from % s() at |%s, %d| \n", stack_function_name, stack_file, stack_line);
 
-
-    fprintf(file, "%*sfrom %s() at |%s, %d|\n", strlen(buffer), programm_function_name, programm_file, programm_line);
+    fprintf(file, "%*sfrom %s() at |%s, %d|\n", strlen(buffer), "", programm_function_name, programm_file, programm_line);
 
     if (stackError > 0)
     {
@@ -276,33 +287,22 @@ void StackDump(Stack *stack, FILE *file,
         
         fprintf(file, "%*s canary2       = %ld\n", 3, stack->canary2);
 
-        fprintf(file, "data [%p]:\n{\n", stack->data);
+        fprintf(file, "data [0x%p]:\n{\n", stack->data);
 
         if (stack->data)
         {
             size_t capacity = stack->stackCapacity;
             size_t size     = stack->stackSize;
-            int*   data     = (int*)stack->data;
+            int    *data     = (int*)stack->data;
 
             for (size_t st = 0; st < capacity; st++)
             {
-                fprintf(file, "%*s %c[%.#d]", 7, (st <= size)?'*':' ', )
+                fprintf(file, "%*s %c[%.#d] = %d", 7, (st <= size)?'*':' ', capacity/10, data[st]);
             }
-        }1
+        }
 
         fputs("}\n", file);
     }
 
     fputs("}", file);
-
-         data [0x0000143125]:
-         {
-              *[0] = 10
-              *[1] = 13
-              *[2] = 30
-              [3] = -666
-              [4] = -666
-              [5] = -666
-              [6] = -666
-         }
 }
