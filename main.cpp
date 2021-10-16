@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <Windows.h>
-#include "..\inc\Stack.h"
+
+#include "StackLibrary\Stack.h"
 
 int main()
 {
@@ -16,13 +17,6 @@ int main()
     for (size_t st = 0; st < sizeof(values)/sizeof(values[0]); st++)
     {
         StackPush(&stack, values + st);
-        getchar();
-    }
-
-    
-    for (size_t st = 0; st < sizeof(values)/sizeof(values[0]); st++)
-    {
-        StackPop(&stack, values + st);
         getchar();
     }
 

@@ -46,6 +46,7 @@ enum StackErrors
     STACKERR_DATA_CRC            = 1 << 7,
     STACKERR_STACK_CRC           = 1 << 8,
     STACKERR_STACK_IS_NOT_INITED = 1 << 9,
+    STACKERR_UNKNOWN_RESIZE_DIRECTION    = 1 << 11,
 };
 
 #define STACK_NULL_PTR (void*)0x18
