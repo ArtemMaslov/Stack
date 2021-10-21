@@ -7,42 +7,81 @@
 #include "StackDiagnostic.h"
 #include "StackProtection.h"
 
+#include "..\Logs\Logs.h"
+
+extern FILE* stackLogFile;
 
 int ValidateStack(Stack *stack)
 {
+#ifdef StackLogs
+    LogLine(stackLogFile, "ValidateStack");
+#endif
+
     int error = STACKERR_NO_ERRORS;
     if (stack == nullptr)
     {
-        error |= STACKERR_STACK_IS_NULL;
-        //assert("Stack ERROR" == "Stack pointer is null");
+        error |= STACKERR_PTR_IS_NULL;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack ptr is null");
+#endif
     }
     else
     {
         if (stack->canary1 != STACK_CANARY1)
+        {
             error |= STACKERR_CANARY1;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack canary1 warning");
+#endif
+        }
 
-        if (stack->canary1 != STACK_CANARY2)
+        if (stack->canary2 != STACK_CANARY2)
+        {
             error |= STACKERR_CANARY2;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack canary2 warning");
+#endif
+        }
         
-        if (stack->data == nullptr || stack->data == STACK_NULL_PTR && stack->stackCapacity>0)
+        if (stack->data == nullptr && stack->stackCapacity>0)
+        {
             error |= STACKERR_STACK_IS_EMPTY;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack stack is empty");
+#endif
+        }
         
         if (!CheckStackCRC(stack))
+        {
             error |= STACKERR_STACK_CRC;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack stack structure crc");
+#endif
+        }
 
         if ((error & STACKERR_STACK_IS_EMPTY) == 0)
         {
             if (!CheckDataCRC(stack))
+            {
                 error |= STACKERR_DATA_CRC;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack stack data crc");
+#endif
+            }
         }
 
-        if (stack->stackSize < stack->stackCapacity)
+        if (stack->stackSize >= stack->stackCapacity && stack->stackCapacity != 0)
+        {
             error |= STACKERR_SIZE_MORE_CAPACITY;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack stack size more capacity");
+#endif
+        }
     }
     return error;
 }
 
-bool IsStackEmpty(Stack *stack)
+int IsStackEmpty(Stack *stack)
 {
     if (stack->data          == nullptr &&
         stack->stackSize     == 0 &&
@@ -52,32 +91,39 @@ bool IsStackEmpty(Stack *stack)
         stack->canary2       == 0 &&
         stack->elementSize   == 0 &&
         stack->stackCapacity == 0)
-        return true;
+        return STACKERR_NO_ERRORS;
     else
-        return false;
+        return STACKERR_STACK_IS_NOT_INITED;
 }
 
 void ClearStack(Stack *stack)
 {
-    stack->elementSize   = 0;
-    stack->stackCapacity = 0;
-    stack->stackSize     = 0;
-    stack->data          = nullptr;
-    stack->stackSize     = 0;
-    stack->stackCRC      = 0;
-    stack->dataCRC       = 0;
-    stack->canary1       = 0;
-    stack->canary2       = 0;
-    stack->elementSize   = 0;
-    stack->stackCapacity = 0;
+#ifdef StackLogs
+    LogLine(stackLogFile, "ClearStack");
+#endif
+    memset(stack, 0, sizeof(Stack));
 }
 
-bool CheckForError(int errors, StackErrors error)
+bool CheckForError(int errors, StackErrors errorName)
 {
-    if ((errors & error) > 0)
-        return false;
-    else
+    if ((errors & errorName) > 0)
         return true;
+    else
+        return false;
+}
+
+bool IsStackBroken(int errors, Stack* stack)
+{
+    if (stack)
+    {
+        if (CheckForError(errors, STACKERR_PTR_IS_NULL) ||
+            CheckForError(errors, STACKERR_ELEM_SIZE_INVALIDE) ||
+            CheckForError(errors, STACKERR_NO_MEMORY) ||
+            CheckForError(errors, STACKERR_STACK_IS_NOT_INITED))
+            return true;
+        return false;
+    }
+    return true;
 }
 
 void StackDump_(Stack *stack, FILE *file,
@@ -89,6 +135,9 @@ void StackDump_(Stack *stack, FILE *file,
     const char *programm_file,
     const int   programm_line)
 {
+#ifdef StackLogs
+    LogLine(stackLogFile, "StackDump_");
+#endif
 
     char stackState[4] = "ERR";
     char buffer[100] = "";

@@ -10,5 +10,7 @@ bool CheckStackCRC(Stack *stack);
 
 int64_t CalculateCRC(char *buf, size_t len);
 
+void CalculateStackCRC(Stack *stack);
+
 
 #endif

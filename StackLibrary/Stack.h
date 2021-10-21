@@ -5,6 +5,8 @@
 #include <stdint.h>
 
 #define StackTypeName ("unknown_type")
+#define StackLogs
+#define StackLogErrors
 
 struct Stack
 {
@@ -36,37 +38,36 @@ const char StackErrorStrings[][24] =
 enum StackErrors
 {
     STACKERR_NO_ERRORS           = 0 << 0,
-    STACKERR_STACK_IS_NULL       = 1 << 0,
+    STACKERR_PTR_IS_NULL         = 1 << 0,
     STACKERR_STACK_IS_EMPTY      = 1 << 1,
-    STACKERR_STACK_IS_NOT_EMPTY  = 1 << 2,
-    STACKERR_NO_MEMORY           = 1 << 3,
-    STACKERR_SIZE_MORE_CAPACITY  = 1 << 4,
-    STACKERR_CANARY1             = 1 << 5,
-    STACKERR_CANARY2             = 1 << 6,
-    STACKERR_DATA_CRC            = 1 << 7,
-    STACKERR_STACK_CRC           = 1 << 8,
-    STACKERR_STACK_IS_NOT_INITED = 1 << 9,
-    STACKERR_UNKNOWN_RESIZE_DIRECTION    = 1 << 11,
+    STACKERR_NO_MEMORY           = 1 << 2,
+    STACKERR_SIZE_MORE_CAPACITY  = 1 << 3,
+    STACKERR_CANARY1             = 1 << 4,
+    STACKERR_CANARY2             = 1 << 5,
+    STACKERR_DATA_CRC            = 1 << 6,
+    STACKERR_STACK_CRC           = 1 << 7,
+    STACKERR_STACK_IS_NOT_INITED = 1 << 8,
+    STACKERR_ELEM_SIZE_INVALIDE  = 1 << 9,
 };
 
-#define STACK_NULL_PTR (void*)0x18
+//#define STACK_NULL_PTR (void*)0x18
+#define STACK_MIN_CAPACITY 8
 #define STACK_CAPACITY_SCALE 2
-#define STACK_CAPACITY_DECREASE_DELTA 5
+#define STACK_CAPACITY_DECREASE_DELTA 8
 
 #define STACK_CANARY1 0xBAD0AAAAAAAA0BAD
 #define STACK_CANARY2 0xBADFBBBBBBBBFBAD
 
 
-int Stack_Constructor(Stack *stack, size_t elementSize, int Capacity);
+int   StackConstructor(Stack *stack, size_t elementSize, size_t Capacity);
 
-int Stack_Destructor(Stack *stack);
+int   StackDestructor(Stack *stack);
 
-int StackPush(Stack *stack, void *value);
+int   StackPush(Stack *stack, void *value);
 
 void* StackPop(Stack *stack, int *error);
 
-int ValidateStack(Stack *stack);
-
+int   ValidateStack(Stack *stack);
 
 #define StackDump(stack, file, programm_function_name, programm_file, programm_line) StackDump_(stack, file, #stack, __FUNCTION__, __FILE__, __LINE__, programm_function_name, programm_file, programm_line);
 

@@ -1,14 +1,17 @@
 #include <stdio.h>
-#include <Windows.h>
-
-#include "StackLibrary\Stack.h"
+#include "..\StackLibrary\Stack.h"
 
 
-int main()
+void StackTest3()
 {
-    SetConsoleCP(1251);
-    SetConsoleOutputCP(1251);
-    
+}
+
+void StackTest2()
+{
+}
+
+void StackTest1()
+{
     Stack stk = {};
     StackConstructor(&stk, sizeof(int), 0);
 
@@ -36,6 +39,4 @@ int main()
             puts("Err");
         }
     }
-
-    return 0;
 }

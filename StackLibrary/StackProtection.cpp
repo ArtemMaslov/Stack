@@ -9,30 +9,56 @@
 
 bool CheckDataCRC(Stack *stack)
 {
-    if (stack->dataCRC != CalculateCRC((char*)stack->data, stack->stackCapacity))
-        return false;
-    else
-        return true;
+    if (stack)
+    {
+        if (stack->data && stack->dataCRC != CalculateCRC((char*)stack->data, stack->stackCapacity))
+            return false;
+        else
+            return true;
+    }
+    return false;
 }
 
 bool CheckStackCRC(Stack *stack)
 {
-    int64_t stackCRC = stack->stackCRC;
-    stack->stackCRC = 0;
-    if (stackCRC != CalculateCRC((char*)(stack), sizeof(Stack)))
+    if (stack)
     {
-        stack->stackCRC = stackCRC;
-        return false;
+        int64_t stackCRC = stack->stackCRC;
+        stack->stackCRC = 0;
+        if (stackCRC != CalculateCRC((char*)(stack), sizeof(Stack)))
+        {
+            stack->stackCRC = stackCRC;
+            return false;
+        }
+        else
+        {
+            stack->stackCRC = stackCRC;
+            return true;
+        }
     }
-    else
+    return false;
+}
+
+void CalculateDataCRC(Stack *stack)
+{
+    if (stack->data)
+        stack->dataCRC = CalculateCRC((char*)stack->data, stack->stackCapacity);
+}
+
+void CalculateStackCRC(Stack *stack)
+{
+    if (stack)
     {
-        stack->stackCRC = stackCRC;
-        return true;
+        CalculateDataCRC(stack);
+        stack->stackCRC = 0;
+        stack->stackCRC = CalculateCRC((char*)(stack), sizeof(Stack));
     }
 }
 
-int64_t CalculateCRC(char *buf, size_t len)
+static int64_t CalculateCRC(char *buf, size_t len)
 {
+    assert(buf);
+
     uint64_t crc_table[256];
     uint64_t crc;
 
