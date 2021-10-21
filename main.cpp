@@ -36,6 +36,6 @@ int main()
             puts("Err");
         }
     }
-
+    StackDestructor(&stk);
     return 0;
 }
