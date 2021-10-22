@@ -16,8 +16,9 @@ int main()
     {
         int value = st + 1;
         StackPush(&stk, &value);
-        printf("%d\n", ((int*)stk.data)[st]);
     }
+
+    StackDump(&stk, stdout);
 
     for (int st = 0; st < 100; st++)
     {
@@ -26,6 +27,7 @@ int main()
             puts("Err");
         }
     }
+    
     
     for (int st = 100; st > 0; st--)
     {
@@ -36,6 +38,7 @@ int main()
             puts("Err");
         }
     }
-    StackDestructor(&stk);
+    
+    StackDump(&stk, stdout);
     return 0;
 }

@@ -59,13 +59,28 @@ int ValidateStack(Stack *stack)
 #endif
         }
 
-        if ((error & STACKERR_STACK_IS_EMPTY) == 0)
+        if ((error & STACKERR_STACK_IS_EMPTY) == 0 && stack->data)
         {
             if (!CheckDataCRC(stack))
             {
                 error |= STACKERR_DATA_CRC;
 #ifdef StackLogErrors
         LogLine(stackLogFile, "Stack stack data crc");
+#endif
+            }
+            
+            if (((int64_t*)((char*)stack->data - sizeof(int64_t)))[0] != STACK_CANARY1)
+            {
+                error |= STACKERR_DATA_CANARY1;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack data canary1");
+#endif
+            }
+            if (((int64_t*)((char*)stack->data + stack->stackCapacity * stack->elementSize))[0] != STACK_CANARY2)
+            {
+                error |= STACKERR_DATA_CANARY2;
+#ifdef StackLogErrors
+        LogLine(stackLogFile, "Stack data canary1");
 #endif
             }
         }
@@ -147,7 +162,7 @@ void StackDump_(Stack *stack, FILE *file,
     if (stack != nullptr && stackError == STACKERR_NO_ERRORS)
         strcpy_s(stackState, "OK");
 
-    sprintf_s(buffer, "Stack<%s> [0x%p]: %s \"%s\" called ", 
+    sprintf_s(buffer, "\nStackDump\nStack<%s> [0x%p]: %s \"%s\" called ", 
         StackTypeName,
         stack,
         stackState,

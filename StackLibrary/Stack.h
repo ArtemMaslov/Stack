@@ -48,6 +48,8 @@ enum StackErrors
     STACKERR_STACK_CRC           = 1 << 7,
     STACKERR_STACK_IS_NOT_INITED = 1 << 8,
     STACKERR_ELEM_SIZE_INVALIDE  = 1 << 9,
+    STACKERR_DATA_CANARY1        = 1 << 10,
+    STACKERR_DATA_CANARY2        = 1 << 11
 };
 
 //#define STACK_NULL_PTR (void*)0x18
@@ -69,7 +71,21 @@ void* StackPop(Stack *stack, int *error);
 
 int   ValidateStack(Stack *stack);
 
-#define StackDump(stack, file, programm_function_name, programm_file, programm_line) StackDump_(stack, file, #stack, __FUNCTION__, __FILE__, __LINE__, programm_function_name, programm_file, programm_line);
+//#define StackDump(stack, file, programm_function_name, programm_file, programm_line) \
+StackDump_(stack, file, #stack, __FUNCTION__, __FILE__, __LINE__, programm_function_name, programm_file, programm_line);
+
+#define StackDump(stack, file) \
+StackDump_(stack, file, #stack, __FUNCTION__, __FILE__, __LINE__, "", "", -1);
+
+
+void StackDump_(Stack *stack, FILE *file,
+    const char *stack_variable_name,
+    const char *stack_function_name,
+    const char *stack_file,
+    const int   stack_line,
+    const char *programm_function_name,
+    const char *programm_file,
+    const int   programm_line);
 
 
 #endif
