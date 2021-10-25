@@ -4,49 +4,38 @@
 #include <stdio.h>
 #include <cmath>
 
+
 #include "..\Logs\Logs.h"
 #include "Stack.h"
 #include "StackProtection.h"
 #include "StackDiagnostic.h"
 
 
-static Stack* StackResize(Stack *stack, int *error);
-
 #ifdef  StackLogs
 
 FILE* stackLogFile = nullptr;
 
-void InitStackLogFile(FILE *file)
-{
-    if (stackLogFile == nullptr)
-    {
-        LogConstructor("StackLogs.txt", file);
-        stackLogFile = file;
-    }
-    //else
-    //    assert(!"Stack log file already inited");
-}
-
-void CloseLogFile()
-{
-    if (stackLogFile)
-        LogDestructor(stackLogFile);
-}
-
 #endif //  StackLogs
 
+static Stack* StackResize(Stack *stack, int *error);
 
-int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity = 0)
+static size_t CalculateDecreasedCapacity(size_t oldCapacity, bool* shouldResize);
+
+
+int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity)
 {
 #ifdef StackLogs
+    assert(stackLogFile);
+
     LogLine(stackLogFile, "StackConstructor");
 #endif
 
     if (stack == nullptr)
     {
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "Stack ptr is null");
+        LogLine(stackLogFile, "ERROR: Stack ptr is null");
 #endif
+        StackDump(stack, stackLogFile);
         return STACKERR_PTR_IS_NULL;
     }
 
@@ -60,8 +49,8 @@ int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity = 0)
         stack->stackCapacity = Capacity;
         stack->stackSize     = 0;
 
-        stack->canary1 = STACK_CANARY1;
-        stack->canary2 = STACK_CANARY2;
+        stack->canaryLeft = STACK_LEFT_CANARY_VALUE;
+        stack->canaryRight = STACK_RIGHT_CANARY_VALUE;
         
         if (stack->stackCapacity > 0)
         {
@@ -71,6 +60,8 @@ int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity = 0)
 
         CalculateStackCRC(stack);
     }
+    else
+        StackDump(stack, stackLogFile);
 
     return error;
 }
@@ -84,14 +75,16 @@ int StackDestructor(Stack *stack)
     if (stack == nullptr)
     {
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "Stack ptr is null");
+        LogLine(stackLogFile, "ERROR: Stack ptr is null");
 #endif
+        StackDump(stack, stackLogFile);
         return STACKERR_PTR_IS_NULL;
     }
 
-    free((char*)stack->data - sizeof(int64_t));
-
-    ClearStack(stack);
+    if (stack->data)
+        free((char*)stack->data - sizeof(int64_t));
+    
+    memset(stack, 0, sizeof(Stack));
 
     return STACKERR_NO_ERRORS;
 }
@@ -103,6 +96,15 @@ int StackPush(Stack *stack, void *value)
 #endif
 
     int error = ValidateStack(stack);
+
+    if (value == nullptr)
+    {
+#ifdef StackLogErrors
+    LogLine(stackLogFile, "ERROR: Trying to push null value");
+#endif
+        StackDump(stack, stackLogFile);
+        return STACKERR_NULL_VALUE;
+    }
 
     if (IsStackBroken(error, stack))
         return error;
@@ -117,10 +119,13 @@ int StackPush(Stack *stack, void *value)
 
     error |= ValidateStack(stack);
 
+    if (error > 0)
+        StackDump(stack, stackLogFile);
+
     return error;
 }
 
-void* StackPop(Stack *stack, int *error = nullptr)
+void* StackPop(Stack *stack, int *error)
 {
 #ifdef StackLogs
     LogLine(stackLogFile, "StackPop");
@@ -138,10 +143,11 @@ void* StackPop(Stack *stack, int *error = nullptr)
     if (stack->stackSize == 0)
     {
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "Stack is empty");
+        LogLine(stackLogFile, "ERROR: Stack is empty");
 #endif
         if (error)
             *error |= STACKERR_STACK_IS_EMPTY;
+        StackDump(stack, stackLogFile);
         return nullptr;
     }
     
@@ -155,6 +161,9 @@ void* StackPop(Stack *stack, int *error = nullptr)
     if (error)
         *error |= _error;
 
+    if (_error > 0)
+        StackDump(stack, stackLogFile);
+
     return (char*)stack->data + (stack->elementSize * stack->stackSize);
 }
 
@@ -163,6 +172,8 @@ static Stack* StackResize(Stack *stack, int *error)
 #ifdef StackLogs
     LogLine(stackLogFile, "StackResize");
 #endif
+
+    assert(stack);
 
     int oldCapacity = stack->stackCapacity;
     bool shouldResize = false;
@@ -179,18 +190,22 @@ static Stack* StackResize(Stack *stack, int *error)
     //}
     else if (stack->stackSize >= stack->stackCapacity)
     {
-        stack->stackCapacity *= STACK_CAPACITY_SCALE;
+        if (stack->stackSize < stack->stackCapacity * 2)
+            stack->stackCapacity *= STACK_CAPACITY_SCALE_COEFFICIENT;
+        else
+            stack->stackCapacity = stack->stackSize;
         shouldResize = true;
     }
     else
     {
-        int rawCapacity = (stack->stackCapacity / STACK_CAPACITY_SCALE - STACK_CAPACITY_DECREASE_DELTA);
+        /*int rawCapacity = (stack->stackCapacity / STACK_CAPACITY_SCALE) - STACK_CAPACITY_DECREASE_DELTA;
         size_t newCapacity = rawCapacity < 0 ? 0 : rawCapacity;
         if (stack->stackSize < newCapacity)
         {
             stack->stackCapacity = newCapacity < STACK_MIN_CAPACITY ? STACK_MIN_CAPACITY : newCapacity;
             shouldResize = true;
-        }
+        }*/
+        stack->stackCapacity = CalculateDecreasedCapacity(stack->stackCapacity, &shouldResize);
     }
         
     if (shouldResize)
@@ -205,11 +220,12 @@ static Stack* StackResize(Stack *stack, int *error)
 
         if (reallocResult == nullptr)
         {
-    #ifdef StackLogErrors
-        LogLine(stackLogFile, "Stack no memory");
-    #endif
+#ifdef StackLogErrors
+            LogLine(stackLogFile, "ERROR: Stack no memory");
+#endif
             if (error)
                 *error |= STACKERR_NO_MEMORY;
+            StackDump(stack, stackLogFile);
             return nullptr;
         }
 
@@ -217,10 +233,23 @@ static Stack* StackResize(Stack *stack, int *error)
         if (stack->stackCapacity > oldCapacity)
             memset((char*)stack->data + oldCapacity * stack->elementSize, 0, (stack->stackCapacity - oldCapacity) * stack->elementSize);
 
-        ((int64_t*)( (char*)stack->data - sizeof(int64_t) ))[0] = STACK_CANARY1;
+        ((int64_t*)( (char*)stack->data - sizeof(int64_t) ))[0] = STACK_LEFT_CANARY_VALUE;
 
-        ((int64_t*)( (char*)stack->data + stack->stackCapacity * stack->elementSize ))[0] = STACK_CANARY2;
+        ((int64_t*)( (char*)stack->data + stack->stackCapacity * stack->elementSize ))[0] = STACK_RIGHT_CANARY_VALUE;
     }
 
     return stack;
+}
+
+static size_t CalculateDecreasedCapacity(size_t oldCapacity, bool* shouldResize)
+{
+    size_t proportionalCapacity = (oldCapacity * (0.5 - STACK_CAPACITY_DECREASE_COEFFICIENT)) > 0 ? 
+                                   oldCapacity * (0.5 - STACK_CAPACITY_DECREASE_COEFFICIENT) : 0;
+    size_t deltaCapacity        = (oldCapacity / 2.0 - STACK_MIN_CAPACITY) > 0 ? oldCapacity / 2.0 - STACK_MIN_CAPACITY : 0;
+    size_t calculatedCapacity   = proportionalCapacity < deltaCapacity ? proportionalCapacity : deltaCapacity;
+
+    calculatedCapacity = calculatedCapacity < STACK_MIN_CAPACITY ? STACK_MIN_CAPACITY : calculatedCapacity;
+    if (calculatedCapacity != oldCapacity)
+        *shouldResize = true;
+    return calculatedCapacity;
 }

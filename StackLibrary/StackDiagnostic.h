@@ -17,9 +17,7 @@ struct DumpInfo
 
 int IsStackEmpty(Stack *stack);
 
-void ClearStack(Stack *stack);
-
-bool CheckForError(int errors, StackErrors errorName);
+bool CheckForError(int errors, StackError errorName);
 
 bool IsStackBroken(int errors, Stack* stack);
 

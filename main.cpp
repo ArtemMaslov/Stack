@@ -9,36 +9,20 @@ int main()
     SetConsoleCP(1251);
     SetConsoleOutputCP(1251);
     
+    FILE* file = fopen("StackLibrary.log", "w");
+    stackLogFile = file;
+    
     Stack stk = {};
+
     StackConstructor(&stk, sizeof(int), 0);
 
-    for (int st = 0; st < 100; st++)
-    {
-        int value = st + 1;
-        StackPush(&stk, &value);
-    }
+    int val = 10;
+    StackPop(&stk, nullptr);
 
-    StackDump(&stk, stdout);
+    StackDump(&stk, stackLogFile);
 
-    for (int st = 0; st < 100; st++)
-    {
-        if (((int*)stk.data)[st] != st + 1)
-        {
-            puts("Err");
-        }
-    }
-    
-    
-    for (int st = 100; st > 0; st--)
-    {
-        int err = 0;
-        int value = *((int*)StackPop(&stk, &err));
-        if (value != st)
-        {
-            puts("Err");
-        }
-    }
-    
-    StackDump(&stk, stdout);
+    StackDestructor(&stk);
+    fclose(stackLogFile);
+
     return 0;
 }
