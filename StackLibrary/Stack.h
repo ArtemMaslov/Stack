@@ -10,7 +10,8 @@
 #ifdef  StackLogs
 
 extern FILE* stackLogFile;
-
+#else
+#define stackLogFile nullptr
 #endif //  StackLogs
 
 /**
@@ -173,6 +174,12 @@ void StackDump_(Stack *stack, FILE *file,
     const char *programm_function_name,
     const char *programm_file,
     const int   programm_line);
+
+/**
+ * @brief      Констркуктор файла логов стека.
+ * @param file Указатель на поток вывода.
+*/
+void StackLogConstructor(FILE* file);
 
 
 #endif

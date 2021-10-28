@@ -9,12 +9,17 @@
 
 #include "..\Logs\Logs.h"
 
+#ifdef StackLogs
+
 extern FILE* stackLogFile;
+
+#endif // StackLogs
+
 
 int ValidateStack(Stack *stack)
 {
 #ifdef StackLogs
-    LogLine(stackLogFile, "ValidateStack");
+    LogLine(stackLogFile, "ValidateStack", DEBUG);
 #endif
 
     int error = STACKERR_NO_ERRORS;
@@ -22,7 +27,7 @@ int ValidateStack(Stack *stack)
     {
         error |= STACKERR_PTR_IS_NULL;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack ptr is null");
+        LogLine(stackLogFile, "WARNING: Stack ptr is null", WARNING);
 #endif
     }
     else
@@ -31,7 +36,7 @@ int ValidateStack(Stack *stack)
         {
             error |= STACKERR_LEFT_CANARY;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack left canary is damaged");
+        LogLine(stackLogFile, "WARNING: Stack left canary is damaged", WARNING);
 #endif
         }
 
@@ -39,7 +44,7 @@ int ValidateStack(Stack *stack)
         {
             error |= STACKERR_RIGHT_CANARY;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack right canary is damaged");
+        LogLine(stackLogFile, "WARNING: Stack right canary is damaged", WARNING);
 #endif
         }
         
@@ -47,7 +52,7 @@ int ValidateStack(Stack *stack)
         {
             error |= STACKERR_STACK_IS_EMPTY;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack is empty");
+        LogLine(stackLogFile, "WARNING: Stack is empty", WARNING);
 #endif
         }
         
@@ -55,7 +60,7 @@ int ValidateStack(Stack *stack)
         {
             error |= STACKERR_STACK_CRC;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack structure crc invalide");
+        LogLine(stackLogFile, "WARNING: Stack structure crc invalide", WARNING);
 #endif
         }
 
@@ -65,7 +70,7 @@ int ValidateStack(Stack *stack)
             {
                 error |= STACKERR_DATA_CRC;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack data crc invalide");
+        LogLine(stackLogFile, "WARNING: Stack data crc invalide", WARNING);
 #endif
             }
             
@@ -73,23 +78,24 @@ int ValidateStack(Stack *stack)
             {
                 error |= STACKERR_DATA_LEFT_CANARY;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack data left canary");
+        LogLine(stackLogFile, "WARNING: Stack data left canary", WARNING);
 #endif
             }
+
             if (((int64_t*)((char*)stack->data + stack->stackCapacity * stack->elementSize))[0] != STACK_RIGHT_CANARY_VALUE)
             {
                 error |= STACKERR_DATA_RIGHT_CANARY;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack data right canary");
+        LogLine(stackLogFile, "WARNING: Stack data right canary", WARNING);
 #endif
             }
         }
 
-        if (stack->stackSize >= stack->stackCapacity && stack->stackCapacity != 0)
+        if (stack->stackSize > stack->stackCapacity && stack->stackCapacity != 0)
         {
             error |= STACKERR_SIZE_MORE_CAPACITY;
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "WARNING: Stack size more capacity");
+        LogLine(stackLogFile, "WARNING: Stack size more capacity", WARNING);
 #endif
         }
     }
@@ -150,7 +156,7 @@ void StackDump_(Stack *stack, FILE *file,
     const int   programm_line)
 {
 #ifdef StackLogs
-    LogLine(stackLogFile, "StackDump_");
+    LogLine(stackLogFile, "StackDump_", DEBUG);
 #endif
 
     assert(file);
@@ -162,10 +168,16 @@ void StackDump_(Stack *stack, FILE *file,
 
     unsigned int stackError = ValidateStack(stack);
 
+    if (file == stackLogFile)
+    {
+        fseek(file, TextOffset, SEEK_END);
+        fputs("<font color=\"17F9FF\">", file);
+    }
+
     if (stack != nullptr && stackError == STACKERR_NO_ERRORS)
         strcpy_s(stackState, "OK");
 
-    sprintf_s(buffer, "\nStackDump\nStack [0x%p]: %s \"%s\" called ", 
+    sprintf_s(buffer, "StackDump\nStack [0x%p]: %s \"%s\" called ", 
         //            "\nStackDump\nStack<StackTypeName> [0x%p]: %s \"%s\" called ", 
         //StackTypeName,
         stack,
@@ -235,4 +247,9 @@ void StackDump_(Stack *stack, FILE *file,
     }
 
     fputs("}\n", file);
+
+    if (file == stackLogFile)
+        fputs("</font>\n</body>\n</html>\n", file);
+
+    fflush(file);
 }

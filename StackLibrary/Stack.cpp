@@ -19,7 +19,12 @@ FILE* stackLogFile = nullptr;
 
 static Stack* StackResize(Stack *stack, int *error);
 
-static size_t CalculateDecreasedCapacity(size_t oldCapacity, bool* shouldResize);
+static size_t CalculateDecreasedCapacity(size_t oldCapacity, size_t stackSize, bool* shouldResize);
+
+void StackLogConstructor(FILE* file)
+{
+    LogConstructor(file);
+}
 
 
 int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity)
@@ -27,13 +32,13 @@ int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity)
 #ifdef StackLogs
     assert(stackLogFile);
 
-    LogLine(stackLogFile, "StackConstructor");
+    LogLine(stackLogFile, "StackConstructor", DEBUG);
 #endif
 
     if (stack == nullptr)
     {
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "ERROR: Stack ptr is null");
+        LogLine(stackLogFile, "ERROR: Stack ptr is null", ERROR);
 #endif
         StackDump(stack, stackLogFile);
         return STACKERR_PTR_IS_NULL;
@@ -69,13 +74,13 @@ int StackConstructor(Stack *stack, size_t elementSize, size_t Capacity)
 int StackDestructor(Stack *stack)
 {
 #ifdef StackLogs
-    LogLine(stackLogFile, "StackDestructor");
+    LogLine(stackLogFile, "StackDestructor", DEBUG);
 #endif
 
     if (stack == nullptr)
     {
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "ERROR: Stack ptr is null");
+        LogLine(stackLogFile, "ERROR: Stack ptr is null", ERROR);
 #endif
         StackDump(stack, stackLogFile);
         return STACKERR_PTR_IS_NULL;
@@ -92,7 +97,7 @@ int StackDestructor(Stack *stack)
 int StackPush(Stack *stack, void *value)
 {
 #ifdef StackLogs
-    LogLine(stackLogFile, "StackPush");
+    LogLine(stackLogFile, "StackPush", DEBUG);
 #endif
 
     int error = ValidateStack(stack);
@@ -100,7 +105,7 @@ int StackPush(Stack *stack, void *value)
     if (value == nullptr)
     {
 #ifdef StackLogErrors
-    LogLine(stackLogFile, "ERROR: Trying to push null value");
+    LogLine(stackLogFile, "ERROR: Trying to push null value", ERROR);
 #endif
         StackDump(stack, stackLogFile);
         return STACKERR_NULL_VALUE;
@@ -128,7 +133,7 @@ int StackPush(Stack *stack, void *value)
 void* StackPop(Stack *stack, int *error)
 {
 #ifdef StackLogs
-    LogLine(stackLogFile, "StackPop");
+    LogLine(stackLogFile, "StackPop", DEBUG);
 #endif
 
     int _error = ValidateStack(stack);
@@ -143,7 +148,7 @@ void* StackPop(Stack *stack, int *error)
     if (stack->stackSize == 0)
     {
 #ifdef StackLogErrors
-        LogLine(stackLogFile, "ERROR: Stack is empty");
+        LogLine(stackLogFile, "ERROR: Stack is empty", ERROR);
 #endif
         if (error)
             *error |= STACKERR_STACK_IS_EMPTY;
@@ -170,7 +175,7 @@ void* StackPop(Stack *stack, int *error)
 static Stack* StackResize(Stack *stack, int *error)
 {
 #ifdef StackLogs
-    LogLine(stackLogFile, "StackResize");
+    LogLine(stackLogFile, "StackResize", DEBUG);
 #endif
 
     assert(stack);
@@ -205,7 +210,7 @@ static Stack* StackResize(Stack *stack, int *error)
             stack->stackCapacity = newCapacity < STACK_MIN_CAPACITY ? STACK_MIN_CAPACITY : newCapacity;
             shouldResize = true;
         }*/
-        stack->stackCapacity = CalculateDecreasedCapacity(stack->stackCapacity, &shouldResize);
+        stack->stackCapacity = CalculateDecreasedCapacity(stack->stackCapacity, stack->stackSize, &shouldResize);
     }
         
     if (shouldResize)
@@ -221,7 +226,7 @@ static Stack* StackResize(Stack *stack, int *error)
         if (reallocResult == nullptr)
         {
 #ifdef StackLogErrors
-            LogLine(stackLogFile, "ERROR: Stack no memory");
+            LogLine(stackLogFile, "ERROR: Stack no memory", ERROR);
 #endif
             if (error)
                 *error |= STACKERR_NO_MEMORY;
@@ -241,7 +246,7 @@ static Stack* StackResize(Stack *stack, int *error)
     return stack;
 }
 
-static size_t CalculateDecreasedCapacity(size_t oldCapacity, bool* shouldResize)
+static size_t CalculateDecreasedCapacity(size_t oldCapacity, size_t stackSize, bool* shouldResize)
 {
     size_t proportionalCapacity = (oldCapacity * (0.5 - STACK_CAPACITY_DECREASE_COEFFICIENT)) > 0 ? 
                                    oldCapacity * (0.5 - STACK_CAPACITY_DECREASE_COEFFICIENT) : 0;
@@ -249,7 +254,12 @@ static size_t CalculateDecreasedCapacity(size_t oldCapacity, bool* shouldResize)
     size_t calculatedCapacity   = proportionalCapacity < deltaCapacity ? proportionalCapacity : deltaCapacity;
 
     calculatedCapacity = calculatedCapacity < STACK_MIN_CAPACITY ? STACK_MIN_CAPACITY : calculatedCapacity;
-    if (calculatedCapacity != oldCapacity)
-        *shouldResize = true;
-    return calculatedCapacity;
+    if (calculatedCapacity > stackSize)
+    {
+        if (calculatedCapacity != oldCapacity)
+            *shouldResize = true;
+        return calculatedCapacity;
+    }
+    else
+        return oldCapacity;
 }
